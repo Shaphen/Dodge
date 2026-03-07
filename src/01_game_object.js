@@ -41,7 +41,7 @@ GameObject.prototype.drawPlayer = function (ctx, color, shadowColor) {
   const strokeColor = color || "blue";
   const shadow = shadowColor || "blue";
   
-  ctx.fillStyle = strokeColor;
+  ctx.fillStyle = "black";
   ctx.shadowColor = shadow;
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 5;
