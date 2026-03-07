@@ -20,6 +20,7 @@ GameView.prototype.start = function start() {
   const create = () => {
     if (document.hasFocus()) {
       this.game.addPlatforms();
+      this.game.addPowerUp();
     }
   }
   let startCreate = setInterval(create, 700);
@@ -27,8 +28,11 @@ GameView.prototype.start = function start() {
 }
 
 GameView.prototype.bindKeyHandlers = function() {
-  if (key.isPressed("left")) { this.game.player.move([-8, 0]) };
-  if (key.isPressed("right")) { this.game.player.move([8, 0]) };
+  const baseSpeed = 8;
+  const speed = this.game.playerSpeedBoost ? baseSpeed * 1.5 : baseSpeed;
+  
+  if (key.isPressed("left")) { this.game.player.move([-speed, 0]) };
+  if (key.isPressed("right")) { this.game.player.move([speed, 0]) };
 }
 
 module.exports = GameView;
