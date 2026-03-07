@@ -128,25 +128,41 @@ function GameObject(options) {
 }
 GameObject.prototype.drawRec = function (ctx) {
   ctx.beginPath();
-  ctx.fillStyle = "#DC1C13";
-  ctx.shadowColor = "red";
+
+  // Use dynamic color from game if available, otherwise use default
+  var colors = this.game && this.game.getLevelColor ? this.game.getLevelColor() : {
+    color: "#DC1C13",
+    shadow: "red"
+  };
+  ctx.fillStyle = colors.color;
+  ctx.shadowColor = colors.shadow;
   ctx.shadowBlur = 10;
   ctx.rect(this.pos[0], this.pos[1], this.width, this.height);
   ctx.fill();
 };
 GameObject.prototype.drawBgRec = function (ctx) {
   ctx.beginPath();
-  ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-  ctx.shadowColor = "white";
+
+  // Use dynamic color from game if available, otherwise use default
+  var colors = this.game && this.game.getLevelBgColor ? this.game.getLevelBgColor() : {
+    color: "rgba(255, 255, 255, 0.5)",
+    shadow: "white"
+  };
+  ctx.fillStyle = colors.color;
+  ctx.shadowColor = colors.shadow;
   ctx.shadowBlur = 10;
   ctx.rect(this.pos[0], this.pos[1], this.width, this.height);
   ctx.fill();
 };
-GameObject.prototype.drawPlayer = function (ctx) {
+GameObject.prototype.drawPlayer = function (ctx, color, shadowColor) {
   ctx.beginPath();
   ctx.fillStyle = "black";
-  ctx.shadowColor = "blue";
-  ctx.strokeStyle = "blue";
+
+  // Use provided colors or default to blue
+  var strokeColor = color || "blue";
+  var shadow = shadowColor || "blue";
+  ctx.shadowColor = shadow;
+  ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 5;
   ctx.shadowBlur = 10;
   ctx.rect(this.pos[0], this.pos[1], this.width, this.height);
@@ -304,10 +320,12 @@ module.exports = PowerUp;
 /***/ (function(module, exports, __webpack_require__) {
 
 var Platform = __webpack_require__(/*! ./02_platform */ "./src/02_platform.js");
-function Game() {
+function Game(options) {
   this.DIM_X = window.innerWidth;
   this.DIM_Y = window.innerHeight;
   this.NUM_PLATFORMS = 7;
+  this.mainGame = options ? options.mainGame : null; // Reference to main game for level info
+
   this.platforms = [];
   this.addPlatforms();
 }
@@ -334,6 +352,108 @@ Game.prototype.addPlatforms = function () {
       game: this
     }));
   }
+};
+Game.prototype.getLevelBgColor = function () {
+  // Get level from main game if available
+  var level = this.mainGame && this.mainGame.level ? this.mainGame.level : 1;
+
+  // Level 5+ uses rainbow shifting colors
+  if (level >= 5) {
+    var rainbow = this.getRainbowColor();
+    // Convert to rgba with transparency for background
+    var rgb = this.hexToRgb(rainbow.color);
+    return {
+      color: "rgba(".concat(rgb.r, ", ").concat(rgb.g, ", ").concat(rgb.b, ", 0.5)"),
+      shadow: rainbow.shadow
+    };
+  }
+
+  // Background colors for levels 1-4 (one color per level)
+  var bgColors = [{
+    color: "rgba(255, 255, 255, 0.5)",
+    shadow: "white"
+  },
+  // Level 1: White
+  {
+    color: "rgba(255, 200, 150, 0.5)",
+    shadow: "orange"
+  },
+  // Level 2: Orange
+  {
+    color: "rgba(255, 255, 150, 0.5)",
+    shadow: "yellow"
+  },
+  // Level 3: Yellow
+  {
+    color: "rgba(150, 255, 200, 0.5)",
+    shadow: "lime"
+  } // Level 4: Green
+  ];
+  var index = Math.min(level - 1, bgColors.length - 1);
+  return bgColors[index];
+};
+Game.prototype.getRainbowColor = function () {
+  // Create a rainbow effect that shifts over time
+  var now = Date.now();
+  var cycleDuration = 3000; // 3 seconds for full rainbow cycle
+  var hue = now % cycleDuration / cycleDuration * 360;
+
+  // Convert HSL to RGB for the color
+  var h = hue / 360;
+  var s = 1;
+  var l = 0.5;
+  var c = (1 - Math.abs(2 * l - 1)) * s;
+  var x = c * (1 - Math.abs(h * 6 % 2 - 1));
+  var m = l - c / 2;
+  var r, g, b;
+  if (h < 1 / 6) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (h < 2 / 6) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (h < 3 / 6) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (h < 4 / 6) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (h < 5 / 6) {
+    r = x;
+    g = 0;
+    b = c;
+  } else {
+    r = c;
+    g = 0;
+    b = x;
+  }
+  r = Math.round((r + m) * 255);
+  g = Math.round((g + m) * 255);
+  b = Math.round((b + m) * 255);
+  var colorHex = "#" + [r, g, b].map(function (x) {
+    var hex = x.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  }).join("");
+  return {
+    color: colorHex,
+    shadow: colorHex
+  };
+};
+Game.prototype.hexToRgb = function (hex) {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : {
+    r: 255,
+    g: 255,
+    b: 255
+  };
 };
 Game.prototype.draw = function (ctx) {
   ctx.clearRect(0, 0, this.DIM_X, this.DIM_Y);
@@ -380,7 +500,7 @@ function Game() {
   // Level system
   this.level = 1;
   this.levelStartTime = Date.now();
-  this.levelDuration = 30000; // 30 seconds for level 1
+  this.currentLevelDuration = 30000; // Store duration for current level
 
   // Power-up effects
   this.playerInvincible = false;
@@ -418,6 +538,135 @@ Game.prototype.getLevelDifficulty = function () {
     duration: duration
   };
 };
+Game.prototype.getLevelColor = function () {
+  // Level 5+ uses rainbow shifting colors
+  if (this.level >= 5) {
+    return this.getRainbowColor();
+  }
+
+  // Colors for levels 1-4 (one color per level)
+  var levelColors = [{
+    color: "#DC1C13",
+    shadow: "red"
+  },
+  // Level 1: Red
+  {
+    color: "#FF6B35",
+    shadow: "orange"
+  },
+  // Level 2: Orange
+  {
+    color: "#FFD23F",
+    shadow: "yellow"
+  },
+  // Level 3: Yellow
+  {
+    color: "#06FFA5",
+    shadow: "lime"
+  } // Level 4: Green
+  ];
+  var index = Math.min(this.level - 1, levelColors.length - 1);
+  return levelColors[index];
+};
+Game.prototype.getRainbowColor = function () {
+  // Create a rainbow effect that shifts over time
+  var now = Date.now();
+  var cycleDuration = 3000; // 3 seconds for full rainbow cycle
+  var hue = now % cycleDuration / cycleDuration * 360;
+
+  // Convert HSL to RGB for the color
+  var h = hue / 360;
+  var s = 1;
+  var l = 0.5;
+  var c = (1 - Math.abs(2 * l - 1)) * s;
+  var x = c * (1 - Math.abs(h * 6 % 2 - 1));
+  var m = l - c / 2;
+  var r, g, b;
+  if (h < 1 / 6) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (h < 2 / 6) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (h < 3 / 6) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (h < 4 / 6) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (h < 5 / 6) {
+    r = x;
+    g = 0;
+    b = c;
+  } else {
+    r = c;
+    g = 0;
+    b = x;
+  }
+  r = Math.round((r + m) * 255);
+  g = Math.round((g + m) * 255);
+  b = Math.round((b + m) * 255);
+  var colorHex = "#" + [r, g, b].map(function (x) {
+    var hex = x.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  }).join("");
+  return {
+    color: colorHex,
+    shadow: colorHex
+  };
+};
+Game.prototype.getLevelBgColor = function () {
+  // Level 5+ uses rainbow shifting colors
+  if (this.level >= 5) {
+    var rainbow = this.getRainbowColor();
+    // Convert to rgba with transparency for background
+    var rgb = this.hexToRgb(rainbow.color);
+    return {
+      color: "rgba(".concat(rgb.r, ", ").concat(rgb.g, ", ").concat(rgb.b, ", 0.5)"),
+      shadow: rainbow.shadow
+    };
+  }
+
+  // Background colors for levels 1-4 (one color per level)
+  var bgColors = [{
+    color: "rgba(255, 255, 255, 0.5)",
+    shadow: "white"
+  },
+  // Level 1: White
+  {
+    color: "rgba(255, 200, 150, 0.5)",
+    shadow: "orange"
+  },
+  // Level 2: Orange
+  {
+    color: "rgba(255, 255, 150, 0.5)",
+    shadow: "yellow"
+  },
+  // Level 3: Yellow
+  {
+    color: "rgba(150, 255, 200, 0.5)",
+    shadow: "lime"
+  } // Level 4: Green
+  ];
+  var index = Math.min(this.level - 1, bgColors.length - 1);
+  return bgColors[index];
+};
+Game.prototype.hexToRgb = function (hex) {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : {
+    r: 255,
+    g: 255,
+    b: 255
+  };
+};
 Game.prototype.addPlatforms = function () {
   var difficulty = this.getLevelDifficulty();
   for (var i = 0; i < difficulty.numPlatforms; i++) {
@@ -442,6 +691,52 @@ Game.prototype.addPowerUp = function () {
     }));
   }
 };
+Game.prototype.getPlayerColor = function () {
+  var now = Date.now();
+  var blinkThreshold = 1000; // Blink when less than 1 second remaining
+
+  // Check invincibility
+  if (this.playerInvincible) {
+    var timeLeft = this.invincibilityEndTime - now;
+    if (timeLeft <= blinkThreshold) {
+      // Blink between gold and blue
+      var blinkRate = 200; // Blink every 200ms
+      var shouldShowPowerUpColor = Math.floor(now / blinkRate) % 2 === 0;
+      return {
+        color: shouldShowPowerUpColor ? "#FFD700" : "blue",
+        shadow: shouldShowPowerUpColor ? "#FFD700" : "blue"
+      };
+    }
+    return {
+      color: "#FFD700",
+      shadow: "#FFD700"
+    }; // Gold
+  }
+
+  // Check speed boost
+  if (this.playerSpeedBoost) {
+    var _timeLeft = this.speedBoostEndTime - now;
+    if (_timeLeft <= blinkThreshold) {
+      // Blink between green and blue
+      var _blinkRate = 200; // Blink every 200ms
+      var _shouldShowPowerUpColor = Math.floor(now / _blinkRate) % 2 === 0;
+      return {
+        color: _shouldShowPowerUpColor ? "#00FF00" : "blue",
+        shadow: _shouldShowPowerUpColor ? "#00FF00" : "blue"
+      };
+    }
+    return {
+      color: "#00FF00",
+      shadow: "#00FF00"
+    }; // Green
+  }
+
+  // Default blue
+  return {
+    color: "blue",
+    shadow: "blue"
+  };
+};
 Game.prototype.draw = function (ctx) {
   ctx.clearRect(0, 0, this.DIM_X, this.DIM_Y);
   this.platforms.forEach(function (pf) {
@@ -451,22 +746,15 @@ Game.prototype.draw = function (ctx) {
     pu.drawPowerUp(ctx);
   });
 
-  // Draw player with invincibility effect
-  if (this.playerInvincible) {
-    ctx.save();
-    ctx.globalAlpha = 0.7;
-    ctx.shadowColor = "#FFD700";
-    ctx.shadowBlur = 20;
-  }
-  this.player.drawPlayer(ctx);
-  if (this.playerInvincible) {
-    ctx.restore();
-  }
+  // Get player color based on active power-ups
+  var playerColors = this.getPlayerColor();
+  this.player.drawPlayer(ctx, playerColors.color, playerColors.shadow);
 
   // Draw UI
   this.drawUI(ctx);
 };
 Game.prototype.drawUI = function (ctx) {
+  var _this = this;
   ctx.fillStyle = "white";
   ctx.font = "20px Arial";
   ctx.fillText("Level: ".concat(this.level), 10, 30);
@@ -480,9 +768,9 @@ Game.prototype.drawUI = function (ctx) {
     yOffset += 30;
   }
   if (this.playerSpeedBoost) {
-    var _timeLeft = Math.ceil((this.speedBoostEndTime - Date.now()) / 1000);
+    var _timeLeft2 = Math.ceil((this.speedBoostEndTime - Date.now()) / 1000);
     ctx.fillStyle = "#00FF00";
-    ctx.fillText("Speed Boost: ".concat(_timeLeft, "s"), 10, yOffset);
+    ctx.fillText("Speed Boost: ".concat(_timeLeft2, "s"), 10, yOffset);
     yOffset += 30;
   }
 
@@ -493,22 +781,25 @@ Game.prototype.drawUI = function (ctx) {
     var progress = elapsed / msg.duration;
 
     // Fade out effect
-    var alpha = 1 - progress;
+    var alpha = Math.max(0, 1 - progress);
     var yPos = msg.pos[1] - progress * 50; // Move up as it fades
 
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = msg.color;
-    ctx.font = "bold 24px Arial";
-    ctx.shadowColor = msg.color;
-    ctx.shadowBlur = 10;
-    ctx.textAlign = "center";
-    ctx.fillText(msg.text, msg.pos[0] + 10, yPos);
-    ctx.restore();
+    // Only draw if still visible
+    if (alpha > 0 && yPos > -50 && yPos < _this.DIM_Y + 50) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = msg.color;
+      ctx.font = "bold 24px Arial";
+      ctx.shadowColor = msg.color;
+      ctx.shadowBlur = 10;
+      ctx.textAlign = "center";
+      ctx.fillText(msg.text, msg.pos[0], yPos);
+      ctx.restore();
+    }
   });
 };
 Game.prototype.moveObjects = function moveObjects() {
-  var _this = this;
+  var _this2 = this;
   this.platforms.forEach(function (pf) {
     pf.move();
   });
@@ -518,7 +809,7 @@ Game.prototype.moveObjects = function moveObjects() {
 
   // Remove power-ups that are off screen
   this.powerUps = this.powerUps.filter(function (pu) {
-    return pu.pos[1] < _this.DIM_Y + 50;
+    return pu.pos[1] < _this2.DIM_Y + 50;
   });
 };
 Game.prototype.wrap = function (pos) {
@@ -533,28 +824,50 @@ Game.prototype.allObjects = function () {
   return [].concat(this.platforms, this.powerUps, this.player);
 };
 Game.prototype.checkCollisions = function (startAnimate, startCreate) {
-  var _this2 = this;
+  var _this3 = this;
+  // Skip all collision checks if player is invincible (except power-up collection)
+  if (this.playerInvincible) {
+    // Only check for power-up collisions when invincible
+    var _allObj = this.allObjects();
+    var _player = _allObj[_allObj.length - 1];
+    var _loop = function _loop() {
+      var obj = _allObj[i];
+      var isPowerUp = _this3.powerUps.indexOf(obj) !== -1;
+      if (isPowerUp && obj.isCollidedWith(_player)) {
+        _this3.collectPowerUp(obj);
+        _this3.powerUps = _this3.powerUps.filter(function (pu) {
+          return pu !== obj;
+        });
+      }
+    };
+    for (var i = 0; i < _allObj.length - 1; i++) {
+      _loop();
+    }
+    return; // Skip all platform collision checks
+  }
+
+  // Normal collision checking when not invincible
   var allObj = this.allObjects();
   var player = allObj[allObj.length - 1];
-  var _loop = function _loop() {
-      var obj = allObj[i];
+  var _loop2 = function _loop2() {
+      var obj = allObj[_i];
 
       // Check if object is a power-up by checking if it's in the powerUps array
-      var isPowerUp = _this2.powerUps.indexOf(obj) !== -1;
+      var isPowerUp = _this3.powerUps.indexOf(obj) !== -1;
       if (isPowerUp) {
         // Check power-up collisions
         if (obj.isCollidedWith(player)) {
-          _this2.collectPowerUp(obj);
-          _this2.powerUps = _this2.powerUps.filter(function (pu) {
+          _this3.collectPowerUp(obj);
+          _this3.powerUps = _this3.powerUps.filter(function (pu) {
             return pu !== obj;
           });
           return 0; // continue
         }
       } else {
-        // Check platform collisions (skip if invincible)
-        if (!_this2.playerInvincible && obj.isCollidedWith(player)) {
-          _this2.collided = true;
-          _this2.reset(startAnimate, startCreate);
+        // Check platform collisions
+        if (obj.isCollidedWith(player)) {
+          _this3.collided = true;
+          _this3.reset(startAnimate, startCreate);
           return {
             v: void 0
           };
@@ -562,8 +875,8 @@ Game.prototype.checkCollisions = function (startAnimate, startCreate) {
       }
     },
     _ret;
-  for (var i = 0; i < allObj.length - 1; i++) {
-    _ret = _loop();
+  for (var _i = 0; _i < allObj.length - 1; _i++) {
+    _ret = _loop2();
     if (_ret === 0) continue;
     if (_ret) return _ret.v;
   }
@@ -587,11 +900,13 @@ Game.prototype.collectPowerUp = function (powerUp) {
     messageColor = "#00FF00";
   }
 
-  // Add message with position and expiration time
+  // Add message at player position (more visible) or power-up position
+  var messageX = this.player ? this.player.pos[0] : powerUp.pos[0];
+  var messageY = this.player ? this.player.pos[1] - 30 : powerUp.pos[1];
   this.powerUpMessages.push({
     text: message,
     color: messageColor,
-    pos: [powerUp.pos[0], powerUp.pos[1]],
+    pos: [messageX, messageY],
     startTime: now,
     duration: 2000 // Show for 2 seconds
   });
@@ -612,10 +927,14 @@ Game.prototype.updatePowerUpEffects = function () {
 };
 Game.prototype.checkLevelProgression = function () {
   var now = Date.now();
-  var difficulty = this.getLevelDifficulty();
-  if (now - this.levelStartTime >= difficulty.duration) {
+
+  // Check if current level duration has elapsed
+  if (now - this.levelStartTime >= this.currentLevelDuration) {
     this.level++;
     this.levelStartTime = now;
+    // Update duration for the new level
+    var difficulty = this.getLevelDifficulty();
+    this.currentLevelDuration = difficulty.duration;
   }
 };
 Game.prototype.reset = function (startAnimate, startCreate) {
@@ -627,6 +946,7 @@ Game.prototype.reset = function (startAnimate, startCreate) {
   // Reset level and power-up effects
   this.level = 1;
   this.levelStartTime = Date.now();
+  this.currentLevelDuration = 30000; // Reset to 30 seconds for level 1
   this.playerInvincible = false;
   this.playerSpeedBoost = false;
   this.powerUpMessages = [];
@@ -746,7 +1066,9 @@ document.addEventListener("DOMContentLoaded", function () {
     playMusic2.style.display = "block";
   });
   var game = new Game();
-  var bgAnimation = new bgObjs();
+  var bgAnimation = new bgObjs({
+    mainGame: game
+  });
   new GameView(bgAnimation, bgCtx).start();
   modal.style.display = "block";
   span.onclick = function () {

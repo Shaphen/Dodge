@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const game = new Game();
-  const bgAnimation = new bgObjs();
+  const bgAnimation = new bgObjs({ mainGame: game });
   new GameView(bgAnimation, bgCtx).start();
   
   modal.style.display = "block";
