@@ -1,18 +1,17 @@
 
 function GameObject(options) {
-  this.pos = options.pos; // ex. [30, 30]
-  this.vel = options.vel; // ex. [10, 10]
-  this.rad = options.rad; // ex. 10
-  this.width = options.width; // ex. 5
-  this.height = options.height; // ex. 5
-  this.color = options.color; // ex. "#00FF00"
+  this.pos = options.pos;
+  this.vel = options.vel;
+  this.rad = options.rad;
+  this.width = options.width;
+  this.height = options.height;
+  this.color = options.color;
   this.game = options.game;
 }
 
 GameObject.prototype.drawRec = function(ctx) {
   ctx.beginPath();
   
-  // Use dynamic color from game if available, otherwise use default
   const colors = this.game && this.game.getLevelColor ? this.game.getLevelColor() : { color: "#DC1C13", shadow: "red" };
   ctx.fillStyle = colors.color;
   ctx.shadowColor = colors.shadow;
@@ -26,7 +25,6 @@ GameObject.prototype.drawRec = function(ctx) {
 GameObject.prototype.drawBgRec = function (ctx) {
   ctx.beginPath();
   
-  // Use dynamic color from game if available, otherwise use default
   const colors = this.game && this.game.getLevelBgColor ? this.game.getLevelBgColor() : { color: "rgba(255, 255, 255, 0.5)", shadow: "white" };
   ctx.fillStyle = colors.color;
   ctx.shadowColor = colors.shadow;
@@ -39,12 +37,11 @@ GameObject.prototype.drawBgRec = function (ctx) {
 
 GameObject.prototype.drawPlayer = function (ctx, color, shadowColor) {
   ctx.beginPath();
-  ctx.fillStyle = "black";
   
-  // Use provided colors or default to blue
   const strokeColor = color || "blue";
   const shadow = shadowColor || "blue";
   
+  ctx.fillStyle = strokeColor;
   ctx.shadowColor = shadow;
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 5;
@@ -52,8 +49,8 @@ GameObject.prototype.drawPlayer = function (ctx, color, shadowColor) {
 
   ctx.rect(this.pos[0], this.pos[1], this.width, this.height);
 
-  ctx.stroke();
   ctx.fill();
+  ctx.stroke();
 };
 
 GameObject.prototype.move = function() {

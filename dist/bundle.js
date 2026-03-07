@@ -118,18 +118,16 @@ module.exports = Util;
 /***/ (function(module, exports) {
 
 function GameObject(options) {
-  this.pos = options.pos; // ex. [30, 30]
-  this.vel = options.vel; // ex. [10, 10]
-  this.rad = options.rad; // ex. 10
-  this.width = options.width; // ex. 5
-  this.height = options.height; // ex. 5
-  this.color = options.color; // ex. "#00FF00"
+  this.pos = options.pos;
+  this.vel = options.vel;
+  this.rad = options.rad;
+  this.width = options.width;
+  this.height = options.height;
+  this.color = options.color;
   this.game = options.game;
 }
 GameObject.prototype.drawRec = function (ctx) {
   ctx.beginPath();
-
-  // Use dynamic color from game if available, otherwise use default
   var colors = this.game && this.game.getLevelColor ? this.game.getLevelColor() : {
     color: "#DC1C13",
     shadow: "red"
@@ -142,8 +140,6 @@ GameObject.prototype.drawRec = function (ctx) {
 };
 GameObject.prototype.drawBgRec = function (ctx) {
   ctx.beginPath();
-
-  // Use dynamic color from game if available, otherwise use default
   var colors = this.game && this.game.getLevelBgColor ? this.game.getLevelBgColor() : {
     color: "rgba(255, 255, 255, 0.5)",
     shadow: "white"
@@ -156,18 +152,16 @@ GameObject.prototype.drawBgRec = function (ctx) {
 };
 GameObject.prototype.drawPlayer = function (ctx, color, shadowColor) {
   ctx.beginPath();
-  ctx.fillStyle = "black";
-
-  // Use provided colors or default to blue
   var strokeColor = color || "blue";
   var shadow = shadowColor || "blue";
+  ctx.fillStyle = strokeColor;
   ctx.shadowColor = shadow;
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 5;
   ctx.shadowBlur = 10;
   ctx.rect(this.pos[0], this.pos[1], this.width, this.height);
-  ctx.stroke();
   ctx.fill();
+  ctx.stroke();
 };
 GameObject.prototype.move = function () {
   var pos = [];
@@ -266,7 +260,6 @@ function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" 
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 var Util = __webpack_require__(/*! ./00_utils */ "./src/00_utils.js");
 var GameObject = __webpack_require__(/*! ./01_game_object */ "./src/01_game_object.js");
-Util.inherits(GameObject, PowerUp);
 var POWERUP_TYPES = {
   INVINCIBILITY: 'invincibility',
   SPEED_BOOST: 'speed_boost'
@@ -281,24 +274,21 @@ function PowerUp(options) {
   options.color = options.color || POWERUP_COLORS[options.type];
   options.game = options.game;
   GameObject.call(this, options);
+  this.type = options.type;
 }
+Util.inherits(GameObject, PowerUp);
 PowerUp.prototype.drawPowerUp = function (ctx) {
   ctx.beginPath();
   ctx.fillStyle = this.color;
   ctx.shadowColor = this.color;
   ctx.shadowBlur = 15;
-
-  // Draw as a circle/star shape
   ctx.arc(this.pos[0] + this.width / 2, this.pos[1] + this.height / 2, this.width / 2, 0, 2 * Math.PI);
   ctx.fill();
-
-  // Add a border
   ctx.strokeStyle = "white";
   ctx.lineWidth = 2;
   ctx.stroke();
 };
 PowerUp.prototype.isCollidedWith = function (otherObj) {
-  // Power-up collision uses circular collision
   var centerX1 = this.pos[0] + this.width / 2;
   var centerY1 = this.pos[1] + this.height / 2;
   var centerX2 = otherObj.pos[0] + otherObj.width / 2;
@@ -496,19 +486,13 @@ function Game() {
     height: 25
   });
   this.collided = false;
-
-  // Level system
   this.level = 1;
   this.levelStartTime = Date.now();
-  this.currentLevelDuration = 30000; // Store duration for current level
-
-  // Power-up effects
+  this.currentLevelDuration = 30000;
   this.playerInvincible = false;
   this.invincibilityEndTime = 0;
   this.playerSpeedBoost = false;
   this.speedBoostEndTime = 0;
-
-  // Power-up messages
   this.powerUpMessages = [];
 }
 Game.prototype.randomPos = function () {
@@ -525,12 +509,8 @@ Game.prototype.otherVel = function (vel) {
   }
 };
 Game.prototype.getLevelDifficulty = function () {
-  // Base speed increases with level
   var baseSpeed = 4 + this.level * 0.5;
-  // Number of platforms increases with level
   var numPlatforms = Math.min(1 + Math.floor(this.level / 2), 5);
-  // Level duration: starts at 30s, increases to 60s for higher levels
-  // Level 1: 30s, Level 2: 40s, Level 3: 50s, Level 4+: 60s
   var duration = Math.min(30000 + (this.level - 1) * 10000, 60000);
   return {
     speed: baseSpeed,
@@ -539,42 +519,29 @@ Game.prototype.getLevelDifficulty = function () {
   };
 };
 Game.prototype.getLevelColor = function () {
-  // Level 5+ uses rainbow shifting colors
   if (this.level >= 5) {
     return this.getRainbowColor();
   }
-
-  // Colors for levels 1-4 (one color per level)
   var levelColors = [{
     color: "#DC1C13",
     shadow: "red"
-  },
-  // Level 1: Red
-  {
+  }, {
     color: "#FF6B35",
     shadow: "orange"
-  },
-  // Level 2: Orange
-  {
+  }, {
     color: "#FFD23F",
     shadow: "yellow"
-  },
-  // Level 3: Yellow
-  {
+  }, {
     color: "#06FFA5",
     shadow: "lime"
-  } // Level 4: Green
-  ];
+  }];
   var index = Math.min(this.level - 1, levelColors.length - 1);
   return levelColors[index];
 };
 Game.prototype.getRainbowColor = function () {
-  // Create a rainbow effect that shifts over time
   var now = Date.now();
-  var cycleDuration = 3000; // 3 seconds for full rainbow cycle
+  var cycleDuration = 3000;
   var hue = now % cycleDuration / cycleDuration * 360;
-
-  // Convert HSL to RGB for the color
   var h = hue / 360;
   var s = 1;
   var l = 0.5;
@@ -620,38 +587,27 @@ Game.prototype.getRainbowColor = function () {
   };
 };
 Game.prototype.getLevelBgColor = function () {
-  // Level 5+ uses rainbow shifting colors
   if (this.level >= 5) {
     var rainbow = this.getRainbowColor();
-    // Convert to rgba with transparency for background
     var rgb = this.hexToRgb(rainbow.color);
     return {
       color: "rgba(".concat(rgb.r, ", ").concat(rgb.g, ", ").concat(rgb.b, ", 0.5)"),
       shadow: rainbow.shadow
     };
   }
-
-  // Background colors for levels 1-4 (one color per level)
   var bgColors = [{
     color: "rgba(255, 255, 255, 0.5)",
     shadow: "white"
-  },
-  // Level 1: White
-  {
+  }, {
     color: "rgba(255, 200, 150, 0.5)",
     shadow: "orange"
-  },
-  // Level 2: Orange
-  {
+  }, {
     color: "rgba(255, 255, 150, 0.5)",
     shadow: "yellow"
-  },
-  // Level 3: Yellow
-  {
+  }, {
     color: "rgba(150, 255, 200, 0.5)",
     shadow: "lime"
-  } // Level 4: Green
-  ];
+  }];
   var index = Math.min(this.level - 1, bgColors.length - 1);
   return bgColors[index];
 };
@@ -679,8 +635,7 @@ Game.prototype.addPlatforms = function () {
   }
 };
 Game.prototype.addPowerUp = function () {
-  // Random chance to spawn power-up (10% chance)
-  if (Math.random() < 0.1) {
+  if (Math.random() < 0.05) {
     var types = [PowerUp.POWERUP_TYPES.INVINCIBILITY, PowerUp.POWERUP_TYPES.SPEED_BOOST];
     var randomType = types[Math.floor(Math.random() * types.length)];
     this.powerUps.push(new PowerUp({
@@ -693,14 +648,11 @@ Game.prototype.addPowerUp = function () {
 };
 Game.prototype.getPlayerColor = function () {
   var now = Date.now();
-  var blinkThreshold = 1000; // Blink when less than 1 second remaining
-
-  // Check invincibility
+  var blinkThreshold = 1000;
   if (this.playerInvincible) {
     var timeLeft = this.invincibilityEndTime - now;
     if (timeLeft <= blinkThreshold) {
-      // Blink between gold and blue
-      var blinkRate = 200; // Blink every 200ms
+      var blinkRate = 200;
       var shouldShowPowerUpColor = Math.floor(now / blinkRate) % 2 === 0;
       return {
         color: shouldShowPowerUpColor ? "#FFD700" : "blue",
@@ -710,15 +662,12 @@ Game.prototype.getPlayerColor = function () {
     return {
       color: "#FFD700",
       shadow: "#FFD700"
-    }; // Gold
+    };
   }
-
-  // Check speed boost
   if (this.playerSpeedBoost) {
     var _timeLeft = this.speedBoostEndTime - now;
     if (_timeLeft <= blinkThreshold) {
-      // Blink between green and blue
-      var _blinkRate = 200; // Blink every 200ms
+      var _blinkRate = 200;
       var _shouldShowPowerUpColor = Math.floor(now / _blinkRate) % 2 === 0;
       return {
         color: _shouldShowPowerUpColor ? "#00FF00" : "blue",
@@ -728,10 +677,8 @@ Game.prototype.getPlayerColor = function () {
     return {
       color: "#00FF00",
       shadow: "#00FF00"
-    }; // Green
+    };
   }
-
-  // Default blue
   return {
     color: "blue",
     shadow: "blue"
@@ -745,12 +692,8 @@ Game.prototype.draw = function (ctx) {
   this.powerUps.forEach(function (pu) {
     pu.drawPowerUp(ctx);
   });
-
-  // Get player color based on active power-ups
   var playerColors = this.getPlayerColor();
   this.player.drawPlayer(ctx, playerColors.color, playerColors.shadow);
-
-  // Draw UI
   this.drawUI(ctx);
 };
 Game.prototype.drawUI = function (ctx) {
@@ -758,8 +701,6 @@ Game.prototype.drawUI = function (ctx) {
   ctx.fillStyle = "white";
   ctx.font = "20px Arial";
   ctx.fillText("Level: ".concat(this.level), 10, 30);
-
-  // Show power-up status
   var yOffset = 60;
   if (this.playerInvincible) {
     var timeLeft = Math.ceil((this.invincibilityEndTime - Date.now()) / 1000);
@@ -773,18 +714,12 @@ Game.prototype.drawUI = function (ctx) {
     ctx.fillText("Speed Boost: ".concat(_timeLeft2, "s"), 10, yOffset);
     yOffset += 30;
   }
-
-  // Draw power-up collection messages
   var now = Date.now();
   this.powerUpMessages.forEach(function (msg) {
     var elapsed = now - msg.startTime;
     var progress = elapsed / msg.duration;
-
-    // Fade out effect
     var alpha = Math.max(0, 1 - progress);
-    var yPos = msg.pos[1] - progress * 50; // Move up as it fades
-
-    // Only draw if still visible
+    var yPos = msg.pos[1] - progress * 50;
     if (alpha > 0 && yPos > -50 && yPos < _this.DIM_Y + 50) {
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -806,8 +741,6 @@ Game.prototype.moveObjects = function moveObjects() {
   this.powerUps.forEach(function (pu) {
     pu.move();
   });
-
-  // Remove power-ups that are off screen
   this.powerUps = this.powerUps.filter(function (pu) {
     return pu.pos[1] < _this2.DIM_Y + 50;
   });
@@ -825,9 +758,7 @@ Game.prototype.allObjects = function () {
 };
 Game.prototype.checkCollisions = function (startAnimate, startCreate) {
   var _this3 = this;
-  // Skip all collision checks if player is invincible (except power-up collection)
   if (this.playerInvincible) {
-    // Only check for power-up collisions when invincible
     var _allObj = this.allObjects();
     var _player = _allObj[_allObj.length - 1];
     var _loop = function _loop() {
@@ -843,19 +774,14 @@ Game.prototype.checkCollisions = function (startAnimate, startCreate) {
     for (var i = 0; i < _allObj.length - 1; i++) {
       _loop();
     }
-    return; // Skip all platform collision checks
+    return;
   }
-
-  // Normal collision checking when not invincible
   var allObj = this.allObjects();
   var player = allObj[allObj.length - 1];
   var _loop2 = function _loop2() {
       var obj = allObj[_i];
-
-      // Check if object is a power-up by checking if it's in the powerUps array
       var isPowerUp = _this3.powerUps.indexOf(obj) !== -1;
       if (isPowerUp) {
-        // Check power-up collisions
         if (obj.isCollidedWith(player)) {
           _this3.collectPowerUp(obj);
           _this3.powerUps = _this3.powerUps.filter(function (pu) {
@@ -864,7 +790,6 @@ Game.prototype.checkCollisions = function (startAnimate, startCreate) {
           return 0; // continue
         }
       } else {
-        // Check platform collisions
         if (obj.isCollidedWith(player)) {
           _this3.collided = true;
           _this3.reset(startAnimate, startCreate);
@@ -882,10 +807,8 @@ Game.prototype.checkCollisions = function (startAnimate, startCreate) {
   }
 };
 Game.prototype.collectPowerUp = function (powerUp) {
-  var effectDuration = 5000; // 5 seconds
+  var effectDuration = 5000;
   var now = Date.now();
-
-  // Create a temporary message
   var message = "";
   var messageColor = "";
   if (powerUp.type === PowerUp.POWERUP_TYPES.INVINCIBILITY) {
@@ -899,8 +822,6 @@ Game.prototype.collectPowerUp = function (powerUp) {
     message = "SPEED BOOST!";
     messageColor = "#00FF00";
   }
-
-  // Add message at player position (more visible) or power-up position
   var messageX = this.player ? this.player.pos[0] : powerUp.pos[0];
   var messageY = this.player ? this.player.pos[1] - 30 : powerUp.pos[1];
   this.powerUpMessages.push({
@@ -908,7 +829,7 @@ Game.prototype.collectPowerUp = function (powerUp) {
     color: messageColor,
     pos: [messageX, messageY],
     startTime: now,
-    duration: 2000 // Show for 2 seconds
+    duration: 2000
   });
 };
 Game.prototype.updatePowerUpEffects = function () {
@@ -919,20 +840,15 @@ Game.prototype.updatePowerUpEffects = function () {
   if (this.playerSpeedBoost && now >= this.speedBoostEndTime) {
     this.playerSpeedBoost = false;
   }
-
-  // Remove expired messages
   this.powerUpMessages = this.powerUpMessages.filter(function (msg) {
     return now - msg.startTime < msg.duration;
   });
 };
 Game.prototype.checkLevelProgression = function () {
   var now = Date.now();
-
-  // Check if current level duration has elapsed
   if (now - this.levelStartTime >= this.currentLevelDuration) {
     this.level++;
     this.levelStartTime = now;
-    // Update duration for the new level
     var difficulty = this.getLevelDifficulty();
     this.currentLevelDuration = difficulty.duration;
   }
@@ -942,11 +858,9 @@ Game.prototype.reset = function (startAnimate, startCreate) {
   this.powerUps = [];
   this.player.pos = [320, 450];
   this.collided = false;
-
-  // Reset level and power-up effects
   this.level = 1;
   this.levelStartTime = Date.now();
-  this.currentLevelDuration = 30000; // Reset to 30 seconds for level 1
+  this.currentLevelDuration = 30000;
   this.playerInvincible = false;
   this.playerSpeedBoost = false;
   this.powerUpMessages = [];

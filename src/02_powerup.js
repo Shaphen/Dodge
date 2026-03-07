@@ -1,6 +1,5 @@
 const Util = require("./00_utils");
 const GameObject = require("./01_game_object");
-Util.inherits(GameObject, PowerUp);
 
 const POWERUP_TYPES = {
   INVINCIBILITY: 'invincibility',
@@ -8,8 +7,8 @@ const POWERUP_TYPES = {
 };
 
 const POWERUP_COLORS = {
-  [POWERUP_TYPES.INVINCIBILITY]: '#FFD700', // Gold
-  [POWERUP_TYPES.SPEED_BOOST]: '#00FF00'    // Green
+  [POWERUP_TYPES.INVINCIBILITY]: '#FFD700',
+  [POWERUP_TYPES.SPEED_BOOST]: '#00FF00'
 };
 
 function PowerUp(options) {
@@ -21,7 +20,11 @@ function PowerUp(options) {
   options.color = options.color || POWERUP_COLORS[options.type];
   options.game = options.game;
   GameObject.call(this, options);
+  
+  this.type = options.type;
 }
+
+Util.inherits(GameObject, PowerUp);
 
 PowerUp.prototype.drawPowerUp = function(ctx) {
   ctx.beginPath();
@@ -29,18 +32,15 @@ PowerUp.prototype.drawPowerUp = function(ctx) {
   ctx.shadowColor = this.color;
   ctx.shadowBlur = 15;
   
-  // Draw as a circle/star shape
   ctx.arc(this.pos[0] + this.width/2, this.pos[1] + this.height/2, this.width/2, 0, 2 * Math.PI);
   ctx.fill();
   
-  // Add a border
   ctx.strokeStyle = "white";
   ctx.lineWidth = 2;
   ctx.stroke();
 };
 
 PowerUp.prototype.isCollidedWith = function(otherObj) {
-  // Power-up collision uses circular collision
   let centerX1 = this.pos[0] + this.width/2;
   let centerY1 = this.pos[1] + this.height/2;
   let centerX2 = otherObj.pos[0] + otherObj.width/2;
