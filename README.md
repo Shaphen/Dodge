@@ -130,6 +130,5 @@ Game.prototype.addPlatforms = function() {
 ## Future Directions
 - [x] Implement levels with increasing difficulty over time
 - [x] Change colors of platforms and background animations over time
-- [ ] Improve visualizations
 - [ ] Add more power-up types
 - [ ] Implement high score tracking

@@ -12,7 +12,7 @@ function GameObject(options) {
 GameObject.prototype.drawRec = function(ctx) {
   ctx.beginPath();
   
-  const colors = this.game && this.game.getLevelColor ? this.game.getLevelColor() : { color: "#DC1C13", shadow: "red" };
+  const colors = this.game && this.game.getLevelColor ? this.game.getLevelColor() : { color: "#FFFFFF", shadow: "white" };
   ctx.fillStyle = colors.color;
   ctx.shadowColor = colors.shadow;
   ctx.shadowBlur = 10;

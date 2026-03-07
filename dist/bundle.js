@@ -129,8 +129,8 @@ function GameObject(options) {
 GameObject.prototype.drawRec = function (ctx) {
   ctx.beginPath();
   var colors = this.game && this.game.getLevelColor ? this.game.getLevelColor() : {
-    color: "#DC1C13",
-    shadow: "red"
+    color: "#FFFFFF",
+    shadow: "white"
   };
   ctx.fillStyle = colors.color;
   ctx.shadowColor = colors.shadow;
@@ -489,6 +489,9 @@ function Game() {
   this.level = 1;
   this.levelStartTime = Date.now();
   this.currentLevelDuration = 30000;
+  this.previousLevel = 1;
+  this.levelTransitionStartTime = Date.now();
+  this.transitionDuration = 2000;
   this.playerInvincible = false;
   this.invincibilityEndTime = 0;
   this.playerSpeedBoost = false;
@@ -511,7 +514,7 @@ Game.prototype.otherVel = function (vel) {
 Game.prototype.getLevelDifficulty = function () {
   var baseSpeed = 4 + this.level * 0.5;
   var numPlatforms = Math.min(1 + Math.floor(this.level / 2), 5);
-  var duration = Math.min(30000 + (this.level - 1) * 10000, 60000);
+  var duration = 30000;
   return {
     speed: baseSpeed,
     numPlatforms: numPlatforms,
@@ -523,18 +526,33 @@ Game.prototype.getLevelColor = function () {
     return this.getRainbowColor();
   }
   var levelColors = [{
-    color: "#DC1C13",
-    shadow: "red"
+    color: "#FFFFFF",
+    shadow: "white"
   }, {
     color: "#FF6B35",
     shadow: "orange"
   }, {
-    color: "#FFD23F",
-    shadow: "yellow"
+    color: "#9B59B6",
+    shadow: "purple"
   }, {
     color: "#06FFA5",
     shadow: "lime"
   }];
+  var now = Date.now();
+  var timeSinceTransition = now - this.levelTransitionStartTime;
+  var isTransitioning = this.previousLevel !== this.level && timeSinceTransition < this.transitionDuration;
+  if (isTransitioning) {
+    var prevIndex = Math.min(this.previousLevel - 1, levelColors.length - 1);
+    var currIndex = Math.min(this.level - 1, levelColors.length - 1);
+    var prevColor = levelColors[prevIndex];
+    var currColor = levelColors[currIndex];
+    var t = Math.min(timeSinceTransition / this.transitionDuration, 1);
+    var interpolatedColor = this.interpolateColor(prevColor.color, currColor.color, t);
+    return {
+      color: interpolatedColor,
+      shadow: interpolatedColor
+    };
+  }
   var index = Math.min(this.level - 1, levelColors.length - 1);
   return levelColors[index];
 };
@@ -599,15 +617,30 @@ Game.prototype.getLevelBgColor = function () {
     color: "rgba(255, 255, 255, 0.5)",
     shadow: "white"
   }, {
-    color: "rgba(255, 200, 150, 0.5)",
+    color: "rgba(255, 107, 53, 0.5)",
     shadow: "orange"
   }, {
-    color: "rgba(255, 255, 150, 0.5)",
-    shadow: "yellow"
+    color: "rgba(155, 89, 182, 0.5)",
+    shadow: "purple"
   }, {
-    color: "rgba(150, 255, 200, 0.5)",
+    color: "rgba(6, 255, 165, 0.5)",
     shadow: "lime"
   }];
+  var now = Date.now();
+  var timeSinceTransition = now - this.levelTransitionStartTime;
+  var isTransitioning = this.previousLevel !== this.level && timeSinceTransition < this.transitionDuration;
+  if (isTransitioning) {
+    var prevIndex = Math.min(this.previousLevel - 1, bgColors.length - 1);
+    var currIndex = Math.min(this.level - 1, bgColors.length - 1);
+    var prevColor = bgColors[prevIndex];
+    var currColor = bgColors[currIndex];
+    var t = Math.min(timeSinceTransition / this.transitionDuration, 1);
+    var interpolatedColor = this.interpolateRgba(prevColor.color, currColor.color, t);
+    return {
+      color: interpolatedColor,
+      shadow: interpolatedColor
+    };
+  }
   var index = Math.min(this.level - 1, bgColors.length - 1);
   return bgColors[index];
 };
@@ -622,6 +655,35 @@ Game.prototype.hexToRgb = function (hex) {
     g: 255,
     b: 255
   };
+};
+Game.prototype.interpolateColor = function (color1, color2, t) {
+  var rgb1 = this.hexToRgb(color1);
+  var rgb2 = this.hexToRgb(color2);
+  var r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * t);
+  var g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * t);
+  var b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * t);
+  return "#" + [r, g, b].map(function (x) {
+    var hex = x.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  }).join("");
+};
+Game.prototype.interpolateRgba = function (rgba1, rgba2, t) {
+  var match1 = rgba1.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  var match2 = rgba2.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (!match1 || !match2) return rgba1;
+  var r1 = parseInt(match1[1]);
+  var g1 = parseInt(match1[2]);
+  var b1 = parseInt(match1[3]);
+  var a1 = match1[4] ? parseFloat(match1[4]) : 1;
+  var r2 = parseInt(match2[1]);
+  var g2 = parseInt(match2[2]);
+  var b2 = parseInt(match2[3]);
+  var a2 = match2[4] ? parseFloat(match2[4]) : 1;
+  var r = Math.round(r1 + (r2 - r1) * t);
+  var g = Math.round(g1 + (g2 - g1) * t);
+  var b = Math.round(b1 + (b2 - b1) * t);
+  var a = a1 + (a2 - a1) * t;
+  return "rgba(".concat(r, ", ").concat(g, ", ").concat(b, ", ").concat(a, ")");
 };
 Game.prototype.addPlatforms = function () {
   var difficulty = this.getLevelDifficulty();
@@ -696,11 +758,85 @@ Game.prototype.draw = function (ctx) {
   this.player.drawPlayer(ctx, playerColors.color, playerColors.shadow);
   this.drawUI(ctx);
 };
+Game.prototype.getLevelIndicatorColor = function () {
+  var now = Date.now();
+  var timeSinceTransition = now - this.levelTransitionStartTime;
+  var isTransitioning = this.previousLevel !== this.level && timeSinceTransition < this.transitionDuration;
+  var currentColor;
+  var previousColor;
+  if (this.level >= 5) {
+    currentColor = this.getRainbowColor().color;
+  } else {
+    var levelColors = ["#FFFFFF", "#FF6B35", "#9B59B6", "#06FFA5"];
+    var currentIndex = Math.min(this.level - 1, levelColors.length - 1);
+    currentColor = levelColors[currentIndex];
+  }
+  if (isTransitioning) {
+    if (this.previousLevel >= 5) {
+      previousColor = this.getRainbowColor().color;
+    } else {
+      var _levelColors = ["#FFFFFF", "#FF6B35", "#9B59B6", "#06FFA5"];
+      var prevIndex = Math.min(this.previousLevel - 1, _levelColors.length - 1);
+      previousColor = _levelColors[prevIndex];
+    }
+    var t = Math.min(timeSinceTransition / this.transitionDuration, 1);
+    var pulse = Math.sin(t * Math.PI * 3);
+    var glowIntensity = 0.5 + Math.abs(pulse) * 0.5;
+    var interpolatedColor = this.interpolateColor(previousColor, currentColor, t);
+    var rgb = this.hexToRgb(interpolatedColor);
+    var r = Math.min(255, Math.round(rgb.r * (0.7 + glowIntensity * 0.6)));
+    var g = Math.min(255, Math.round(rgb.g * (0.7 + glowIntensity * 0.6)));
+    var b = Math.min(255, Math.round(rgb.b * (0.7 + glowIntensity * 0.6)));
+    return {
+      color: "rgb(".concat(r, ", ").concat(g, ", ").concat(b, ")"),
+      glow: 5 + Math.abs(pulse) * 25,
+      alpha: 1
+    };
+  }
+  return {
+    color: currentColor,
+    glow: 0,
+    alpha: 1
+  };
+};
 Game.prototype.drawUI = function (ctx) {
   var _this = this;
-  ctx.fillStyle = "white";
+  var now = Date.now();
+  var timeSinceTransition = now - this.levelTransitionStartTime;
+  var isTransitioning = this.previousLevel !== this.level && timeSinceTransition < this.transitionDuration;
+  var indicatorStyle = this.getLevelIndicatorColor();
   ctx.font = "20px Arial";
-  ctx.fillText("Level: ".concat(this.level), 10, 30);
+  ctx.fillStyle = "white";
+  ctx.shadowBlur = 0;
+  var textMetrics = ctx.measureText("Level: ");
+  var numberX = 10 + textMetrics.width;
+  if (isTransitioning) {
+    var t = Math.min(timeSinceTransition / this.transitionDuration, 1);
+    var fadeOut = 1 - t;
+    var fadeIn = t;
+    ctx.fillText("Level: ", 10, 30);
+    ctx.save();
+    ctx.globalAlpha = fadeOut;
+    ctx.fillStyle = "white";
+    ctx.shadowColor = "white";
+    ctx.shadowBlur = 0;
+    ctx.fillText(this.previousLevel.toString(), numberX, 30);
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = fadeIn;
+    ctx.fillStyle = indicatorStyle.color;
+    ctx.shadowColor = indicatorStyle.color;
+    ctx.shadowBlur = indicatorStyle.glow;
+    ctx.fillText(this.level.toString(), numberX, 30);
+    ctx.restore();
+  } else {
+    ctx.fillText("Level: ", 10, 30);
+    ctx.fillStyle = indicatorStyle.color;
+    ctx.shadowColor = indicatorStyle.color;
+    ctx.shadowBlur = indicatorStyle.glow;
+    ctx.fillText(this.level.toString(), numberX, 30);
+  }
+  ctx.shadowBlur = 0;
   var yOffset = 60;
   if (this.playerInvincible) {
     var timeLeft = Math.ceil((this.invincibilityEndTime - Date.now()) / 1000);
@@ -714,7 +850,6 @@ Game.prototype.drawUI = function (ctx) {
     ctx.fillText("Speed Boost: ".concat(_timeLeft2, "s"), 10, yOffset);
     yOffset += 30;
   }
-  var now = Date.now();
   this.powerUpMessages.forEach(function (msg) {
     var elapsed = now - msg.startTime;
     var progress = elapsed / msg.duration;
@@ -847,8 +982,10 @@ Game.prototype.updatePowerUpEffects = function () {
 Game.prototype.checkLevelProgression = function () {
   var now = Date.now();
   if (now - this.levelStartTime >= this.currentLevelDuration) {
+    this.previousLevel = this.level;
     this.level++;
     this.levelStartTime = now;
+    this.levelTransitionStartTime = now;
     var difficulty = this.getLevelDifficulty();
     this.currentLevelDuration = difficulty.duration;
   }
@@ -859,7 +996,9 @@ Game.prototype.reset = function (startAnimate, startCreate) {
   this.player.pos = [320, 450];
   this.collided = false;
   this.level = 1;
+  this.previousLevel = 1;
   this.levelStartTime = Date.now();
+  this.levelTransitionStartTime = Date.now();
   this.currentLevelDuration = 30000;
   this.playerInvincible = false;
   this.playerSpeedBoost = false;
