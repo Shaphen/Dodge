@@ -486,10 +486,10 @@ function Game() {
     height: 25
   });
   this.collided = false;
-  this.level = 1;
+  this.level = 5;
   this.levelStartTime = Date.now();
   this.currentLevelDuration = 30000;
-  this.previousLevel = 1;
+  this.previousLevel = 5;
   this.levelTransitionStartTime = Date.now();
   this.transitionDuration = 2000;
   this.playerInvincible = false;
@@ -995,8 +995,8 @@ Game.prototype.reset = function (startAnimate, startCreate) {
   this.powerUps = [];
   this.player.pos = [320, 450];
   this.collided = false;
-  this.level = 1;
-  this.previousLevel = 1;
+  this.level = 5;
+  this.previousLevel = 5;
   this.levelStartTime = Date.now();
   this.levelTransitionStartTime = Date.now();
   this.currentLevelDuration = 30000;
