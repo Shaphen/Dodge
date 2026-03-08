@@ -17,10 +17,10 @@ function Game() {
   });
   this.collided = false;
   
-  this.level = 5;
+  this.level = 1;
   this.levelStartTime = Date.now();
   this.currentLevelDuration = 30000;
-  this.previousLevel = 5;
+  this.previousLevel = 1;
   this.levelTransitionStartTime = Date.now();
   this.transitionDuration = 2000;
   
@@ -568,8 +568,8 @@ Game.prototype.reset = function(startAnimate, startCreate) {
   this.player.pos = [320, 450];
   this.collided = false;
   
-  this.level = 5;
-  this.previousLevel = 5;
+  this.level = 1;
+  this.previousLevel = 1;
   this.levelStartTime = Date.now();
   this.levelTransitionStartTime = Date.now();
   this.currentLevelDuration = 30000;
